@@ -15,7 +15,7 @@ def juicer(resolution, juicer_path, max_chr, output):
 	os.system("mkdir %s/eigenvector"%(output))
 	formatted_file = os.listdir("%s/formatted_file/"%(output))
 	for matrix in formatted_file:
-		os.system("java -Xmx4g -jar %s pre %s/%s %s/hic_file/%s.hic %s"%(juicer_path, output, matrix, output, matrix, species))
+		# os.system("java -Xmx4g -jar %s pre %s/%s %s/hic_file/%s.hic %s"%(juicer_path, output, matrix, output, matrix, species))
 		for i in list(range(1, max_chr+1))+['X','Y']:
 			os.system("java -jar %s eigenvector NONE %s/hic_file/%s.hic %s -p BP %s %s/eigenvector/%s_eigen_chr%s.txt"%(juicer_path, output, matrix, i, resolution, output, matrix, i))
 
@@ -29,10 +29,12 @@ def coordinate(resolution, prefixes, output):
 		os.system('''grep -v 'NaN'  %s/coordinate/%s_tmp >  %s/coordinate/%s_tmp_nona && mv %s/coordinate/%s_tmp_nona %s/coordinate/%s_tmp'''%(output, ei_file,output, ei_file, output, ei_file, output, ei_file))
 		os.system("sed 's/ /\t/g' %s/coordinate/%s_tmp | sort -V -k1 > %s/coordinate/%s_tmp1 && mv %s/coordinate/%s_tmp1 %s/coordinate/%s_tmp"%(output, ei_file, output, ei_file, output, ei_file, output, ei_file))
 
+	prefixes = [re.findall("(.*)_eigen.*",i)[0] for i in prefixes]
+
 	# Merge files together
 	for i in prefixes:
 		os.system("cat %s/coordinate/%s* > %s/coordinate/%s_all_bed "%(output, i, output, i))
-	os.system("rm *nona")
+	os.system("rm %s/coordinate/*nona"%(output))
 	
 def check_direction(species, output):
 	os.system("mkdir %s/cold_TAD"%(output))
@@ -136,19 +138,21 @@ if __name__ == '__main__':
     	os.system("mkdir %s/eigenvector"%(output))
     	os.system("cp %s/* %s/eigenvector"%(eigenvector, output))
     	prefixes = os.listdir(eigenvector)
-	    coordinate(resolution, prefixes, output)
-	    check_direction(species, output)
-	    change_direction(output)
-	    final(TAD_domain, output)
+
+    	coordinate(resolution, prefixes, output)
+    	check_direction(species, output)
+    	change_direction(output)
+    	final(TAD_domain, output)
 
     if contact_path:
     	os.system("gunzip %s/*"%(contact_path))
     	prefixes = os.listdir(contact_path)
+
     	formatted(prefixes, contact_path, output)
-	    juicer(resolution, juicer_path, max_chr, output)
-	    coordinate(resolution, prefixes, output)
-	    check_direction(species, output)
-	    change_direction(output)
-	    final(TAD_domain, output)
+    	juicer(resolution, juicer_path, max_chr, output)
+    	coordinate(resolution, prefixes, output)
+    	check_direction(species, output)
+    	change_direction(output)
+    	final(TAD_domain, output)
 
 
