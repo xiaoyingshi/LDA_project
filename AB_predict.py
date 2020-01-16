@@ -1,6 +1,6 @@
 import sys
 import pandas as pd
-import argparse
+import configparser
 import re
 import subprocess
 import os
@@ -44,7 +44,7 @@ def check_direction(species, output):
 	coordinate_file_nobed = [i for i in coordinate_file if '_all_bed' not in i]
 
 	for i in list(range(1, max_chr+1))+['X','Y']:
-		os.system('''cat /mnt/Storage2/home/zhengrongbin/project/TAD_promoter/data/TAD_outlier_%s/%s_cold_TAD.xls | grep "chr%s$(printf '\t')" > %s/cold_TAD/TAD_cold_chr%s.txt'''%(species, species, i, output, i))
+		os.system('''cat %s | grep "chr%s$(printf '\t')" > %s/cold_TAD/TAD_cold_chr%s.txt'''%(cold_TAD_path, i, output, i))
 		
 		for nobed in coordinate_file_nobed:
 			chr_num = re.findall(".*_eigen_chr(.*).txt_tmp$",nobed)[0]
@@ -98,61 +98,42 @@ def final(TAD_domain, output):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Perdict A/B compartment.')
-    parser.add_argument("-c", "--contact_path",dest="contact_path", 
-                    help="Input the directory that contains all contact matrix file if you want to start analysis from contact matrix level", metavar="FILE",
-                    type=str)
-    parser.add_argument("-e", "--eigenvector", dest="eigenvector",
-    	help='Input the directory that contains all eigenvector value juicer get if you want to start analysis from eigenvector level',type=str)
-    parser.add_argument("-s", "--species",dest="species", required=True,
-                    help="Input species (eg:mm10)", metavar="FILE",
-                    type=str)    
-    parser.add_argument("-r", "--resolution", dest="resolution", required=True,
-    	help='Input the resolution for perdict compartment(eg:50000)',
-    	type=int)
-    parser.add_argument("-t", "--TAD_domain", dest="TAD_domain", nargs='?',
-    	default = "/mnt/Storage/home/shixiaoying/Projects/AB_predict/AB_predict/mm10_TAD_domain_withGap_new.xls",
-    	help='Input the TAD_domain path',
-    	type=str)
-    parser.add_argument("-j", "--juicer_path", nargs='?',
-    	default="/mnt/Storage/home/shixiaoying/software/juicer/juicer_tools_1.14.08.jar", 
-    	help='Input the juicer tool path',type=str)
-    parser.add_argument("-o", "--output", dest="output", required=True,
-    	help='Input the result directory path',type=str)
 
-    args = parser.parse_args()
-    contact_path = args.contact_path
-    eigenvector = args.eigenvector
-    species = args.species
-    resolution = args.resolution
-    TAD_domain = args.TAD_domain
-    juicer_path = args.juicer_path
-    output = args.output
+	cf = configparser.ConfigParser()
+	cf.read("/mnt/Storage/home/shixiaoying/Projects/AB_predict/ABP.conf", encoding='GBK')
+	start = cf.get('parameters', 'start')
+	species = cf.get('parameters', 'species')
+	resolution = cf.get('parameters', 'resolution')
+	TAD_domain = cf.get('parameters', 'TAD_domain')
+	cold_TAD_path = cf.get('parameters', 'cold_TAD_path')
+	juicer_path = cf.get('parameters', 'juicer_path')
+	output = cf.get('parameters', 'output')
 
-    if re.findall(r'[A-Za-z]+',species)[0] == "mm":
-    	max_chr = 19
-    else:
-    	max_chr = 22
+	if re.findall(r'[A-Za-z]+',species)[0] == "mm":
+		max_chr = 19
+	else:
+		max_chr = 22
 
-    if eigenvector:
-    	os.system("mkdir %s/eigenvector"%(output))
-    	os.system("cp %s/* %s/eigenvector"%(eigenvector, output))
-    	prefixes = os.listdir(eigenvector)
+	if start=="C":
+		contact_path = cf.get('parameters', 'contact_path')
+		os.system("gunzip %s/*"%(contact_path))
+		prefixes = os.listdir(contact_path)
+		formatted(prefixes, contact_path, output)
+		juicer(resolution, juicer_path, max_chr, output)
+		coordinate(resolution, prefixes, output)
+		check_direction(species, output)
+		change_direction(output)
+		final(TAD_domain, output)
+	else:
+		print('okkkk')
+		eigenvector = cf.get('parameters', 'eigenvector')
+		os.system("mkdir %s/eigenvector"%(output))
+		os.system("cp %s/* %s/eigenvector"%(eigenvector, output))
+		prefixes = os.listdir(eigenvector)
+		coordinate(resolution, prefixes, output)
+		check_direction(species, output)
+		change_direction(output)
+		final(TAD_domain, output)
 
-    	coordinate(resolution, prefixes, output)
-    	check_direction(species, output)
-    	change_direction(output)
-    	final(TAD_domain, output)
-
-    if contact_path:
-    	os.system("gunzip %s/*"%(contact_path))
-    	prefixes = os.listdir(contact_path)
-
-    	formatted(prefixes, contact_path, output)
-    	juicer(resolution, juicer_path, max_chr, output)
-    	coordinate(resolution, prefixes, output)
-    	check_direction(species, output)
-    	change_direction(output)
-    	final(TAD_domain, output)
 
 
