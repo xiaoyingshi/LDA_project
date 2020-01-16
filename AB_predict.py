@@ -52,6 +52,7 @@ def check_direction(species, output):
 				os.system("bedtools intersect -wao  -b %s/coordinate/%s -a %s/cold_TAD/TAD_cold_chr%s.txt | grep -v 'interTAD'> %s/cold_TAD/%s_chr%s_cold.txt"%(output, nobed, output, i, output, nobed, i))
 				os.system('''awk 'NR>1{arr9[$4]  += $9;arr2[$4]  += $2;arr3[$4]  += $3;arr5[$4]  += $5; arr7[$4]  += $7;arr8[$4]  += $8;count[$4] += 1}END{ for (a in arr9) { print a "\t" $1  "\t" arr2[a] / count[a] "\t" arr3[a] / count[a] "\t" arr5[a] / count[a] "\t" arr7[a] / count[a] "\t" arr8[a] / count[a]  "\t" arr9[a] / count[a]}}' %s/cold_TAD/%s_chr%s_cold.txt > %s/cold_TAD_avg/%s_cold_avg'''%(output, nobed, i, output, nobed))
 
+
 def change_direction(output):
 	os.system("mkdir %s/final_bin"%(output))
 	change_list = {}  
@@ -67,11 +68,12 @@ def change_direction(output):
 			l1 = file1.iloc[:,7].tolist()
 			l2 = [i for i in l1 if i >0]
 			l_ratio = len(l2)/len(l1)
-			if l_ratio>0.5:
+
+			if l_ratio>float(cut_off):
 				chr_num = re.findall(".*chr(.*).txt.*",file)[0]
 				# print(chr_num)
 				change_list[prefix].append(chr_num)
-	           
+	print(change_list)
 
 	beds1 = os.listdir("%s/coordinate/"%(output))
 	beds = [i for i in beds1 if '_all_bed' in i]
@@ -108,6 +110,8 @@ if __name__ == '__main__':
 	cold_TAD_path = cf.get('parameters', 'cold_TAD_path')
 	juicer_path = cf.get('parameters', 'juicer_path')
 	output = cf.get('parameters', 'output')
+	cut_off = cf.get('parameters', 'cut_off')
+
 
 	if re.findall(r'[A-Za-z]+',species)[0] == "mm":
 		max_chr = 19
@@ -125,7 +129,6 @@ if __name__ == '__main__':
 		change_direction(output)
 		final(TAD_domain, output)
 	else:
-		print('okkkk')
 		eigenvector = cf.get('parameters', 'eigenvector')
 		os.system("mkdir %s/eigenvector"%(output))
 		os.system("cp %s/* %s/eigenvector"%(eigenvector, output))
